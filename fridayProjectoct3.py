@@ -1,13 +1,14 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sqlite3
+import re # <-- Added for email validation
 
 # --- Database Management Functions ---
 
 DATABASE_NAME = 'customer_data.db'
 
 def create_database_table():
-    # ... (Keep the create_database_table function from Section 2) ...
+    """Connects to the database and creates the 'customers' table if it doesn't exist."""
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
 
@@ -52,7 +53,7 @@ class CustomerApp:
     def __init__(self, master):
         self.master = master
         master.title("Customer Information Submission")
-        master.geometry("450x400") # Set initial window size
+        master.geometry("450x400") 
 
         # 1. Variables to hold the form data
         self.name_var = tk.StringVar()
@@ -118,8 +119,28 @@ class CustomerApp:
         self.address_var.set("")
         self.contact_method_var.set("Email") # Reset dropdown to default
 
+    # --- VALIDATION HELPER METHODS ---
+    def is_valid_email(self, email):
+        """Simple check for a valid email format using regex."""
+        # Regex pattern for basic email validation
+        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        return re.match(pattern, email)
+
+    def is_valid_date(self, date_str):
+        """Checks if the date string is in YYYY-MM-DD format."""
+        # Check for correct length and presence of hyphens
+        if len(date_str) != 10:
+            return False
+        if date_str[4] != '-' or date_str[7] != '-':
+            return False
+        # Check if the parts are digits
+        if not (date_str[:4].isdigit() and date_str[5:7].isdigit() and date_str[8:].isdigit()):
+            return False
+        return True
+    # --- END VALIDATION HELPER METHODS ---
+
     def submit_data(self):
-        """Handles the submission process: validation, insertion, and form clearing."""
+        """Handles the submission process with validation, insertion, and form clearing."""
         # Get data from variables
         name = self.name_var.get().strip()
         birthday = self.birthday_var.get().strip()
@@ -128,10 +149,24 @@ class CustomerApp:
         address = self.address_var.get().strip()
         contact_method = self.contact_method_var.get().strip()
 
-        # Simple validation: ensure name is not empty
+        # --- DATA VALIDATION BLOCK ---
+
+        # 1. Required Field Validation (Name)
         if not name:
-            messagebox.showerror("Validation Error", "Customer Name is required.")
+            messagebox.showerror("Validation Error", "Customer **Name** is a required field.")
             return
+
+        # 2. Email Format Validation (only if email is provided)
+        if email and not self.is_valid_email(email):
+            messagebox.showerror("Validation Error", "Please enter a valid **Email** address (e.g., user@example.com).")
+            return
+            
+        # 3. Date Format Validation (only if birthday is provided)
+        if birthday and not self.is_valid_date(birthday):
+            messagebox.showerror("Validation Error", "Please enter a valid **Birthday** in YYYY-MM-DD format.")
+            return
+
+        # --- END VALIDATION BLOCK ---
 
         # Insert data into database
         success = insert_customer_data(name, birthday, email, phone, address, contact_method)
